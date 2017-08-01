@@ -106,11 +106,11 @@ void RollingNumbers::UpdateText()
 
 struct LunaRollingNumbers : Luna<RollingNumbers>
 {
-	GET_SET_MEMBER(approach_seconds, FArg);
-	GET_SET_MEMBER(chars_wide, IArg);
-	GET_SET_MEMBER(commify, BArg);
-	GET_SET_MEMBER(leading_glyph, SArg);
-	GET_SET_MEMBER(text_format, SArg);
+	GET_SET_MEMBER(approach_seconds, m_approach_seconds, FArg);
+	GET_SET_MEMBER(chars_wide, m_chars_wide, IArg);
+	GET_SET_MEMBER(commify, m_commify, BArg);
+	GET_SET_MEMBER(leading_glyph, m_leading_glyph, SArg);
+	GET_SET_MEMBER(text_format, m_text_format, SArg);
 	static int set_leading_attribute(T* p, lua_State* L)
 	{
 		p->m_leading_text_attr.FromStack(L, 1);

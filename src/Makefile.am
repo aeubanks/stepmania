@@ -130,6 +130,7 @@ endif
 DataStructures = \
 Attack.cpp Attack.h AutoKeysounds.cpp AutoKeysounds.h \
 AdjustSync.cpp AdjustSync.h \
+AutoCreateSteps.cpp AutoCreateSteps.h \
 BackgroundUtil.cpp BackgroundUtil.h \
 BannerCache.cpp BannerCache.h \
 Character.cpp Character.h \
@@ -174,6 +175,7 @@ NotesWriterDWI.cpp NotesWriterDWI.h \
 NotesWriterJson.cpp NotesWriterJson.h \
 NotesWriterSM.cpp NotesWriterSM.h NotesWriterSSC.cpp NotesWriterSSC.h \
 OptionRowHandler.cpp OptionRowHandler.h OptionsList.cpp OptionsList.h \
+PanelCoord.cpp PanelCoord.h \
 PlayerAI.cpp PlayerAI.h PlayerNumber.cpp PlayerNumber.h PlayerOptions.cpp PlayerOptions.h \
 PlayerStageStats.cpp PlayerStageStats.h \
 PlayerState.cpp PlayerState.h Preference.cpp Preference.h Profile.cpp Profile.h \

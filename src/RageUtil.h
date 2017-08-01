@@ -256,6 +256,12 @@ inline float RandomFloat( float fLow, float fHigh )
   return Rage::scale( RandomFloat(), 0.0f, 1.0f, fLow, fHigh );
 }
 
+// Returns a random bool
+inline bool RandomBool()
+{
+	return g_RandomNumberGenerator() & 1;
+}
+
 // Returns an integer between nLow and nHigh inclusive
 inline int RandomInt(int low, int high)
 {

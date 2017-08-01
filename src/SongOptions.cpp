@@ -107,7 +107,8 @@ void SongOptions::GetMods( vector<std::string> &AddTo ) const
 	}
 
 	if( m_bAssistClap )
-	{	AddTo.push_back( "Clap" );
+	{
+		AddTo.push_back( "Clap" );
 	}
 	if( m_bAssistMetronome )
 	{

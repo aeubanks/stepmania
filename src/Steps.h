@@ -2,6 +2,7 @@
 #define STEPS_H
 
 #include "Attack.h"
+#include "AutoCreateSteps.h"
 #include "GameConstantsAndTypes.h"
 #include "PlayerNumber.h"
 #include "Grade.h"
@@ -49,6 +50,7 @@ public:
 	// initializers
 	void AutogenFrom( const Steps *parent, StepsType ntTo );
 	void CopyFrom( Steps* pSource, StepsType ntTo, float fMusicLengthSeconds );
+	void AutoCreate( Steps* pSource, StepsType ntTo, AutoCreateSteps::AutoCreateParameters params );
 	void CreateBlank( StepsType ntTo );
 
 	void Compress() const;

@@ -1067,10 +1067,11 @@ void NoteData::GetTracksHeldAtRow( int row, std::set<int>& addTo )
 
 int NoteData::GetNumTracksHeldAtRow( int row )
 {
-	static std::set<int> viTracks;
-	viTracks.clear();
-	GetTracksHeldAtRow( row, viTracks );
-	return viTracks.size();
+	int ret = 0;
+	for( int t=0; t<GetNumTracks(); ++t )
+		if( IsHoldNoteAtRow( t, row ) )
+			++ret;
+	return ret;
 }
 
 bool NoteData::GetNextTapNoteRowForTrack( int track, int &rowInOut, bool ignoreAutoKeysounds ) const

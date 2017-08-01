@@ -95,15 +95,10 @@ do
 	end
 end
 
-local function handle_edit_setup(song, steps, stype, diff, desc)
+local function handle_edit_setup(info)
 	GAMESTATE:JoinPlayer(PLAYER_1)
-	local edit_steps= false
-	if stype then
-		edit_steps= GAMESTATE:SetStepsForEditMode(song, steps, stype, diff, desc)
-	else
-		edit_steps= GAMESTATE:SetStepsForEditMode(song, steps)
-	end
-	add_to_recently_edited(song, edit_steps)
+	local edit_steps= GAMESTATE:SetStepsForEditMode(info)
+	add_to_recently_edited(info:get_song(), edit_steps)
 	SCREENMAN:GetTopScreen():SetNextScreenName("ScreenEdit")
 		:StartTransitioningScreen("SM_GoToNextScreen")
 end
@@ -116,12 +111,14 @@ local function handle_edit_description_prompt(info)
 			if answer ~= "" then
 				set_delayed_command(
 					function()
-						handle_edit_setup(info.song, info.steps, info.stype, "Difficulty_Edit", answer)
+						info:set_difficulty("Difficulty_Edit")
+						info:set_edit_name(answer)
+						handle_edit_setup(info)
 					end, "create edit with description")
 			end
 		end,
 		Validate= function(answer, err)
-			if SongUtil.validate_edit_description(info.song, info.stype, answer) then
+			if SongUtil.validate_edit_description(info:get_song(), info:get_steps_type(), answer) then
 				return true, ""
 			else
 				return false, THEME:GetString("SongUtil", "The name you chose conflicts with another edit. Please use a different name.")
@@ -134,12 +131,13 @@ end
 
 local function generate_steps_action(info)
 	return {
-		name= name_for_steps(info.steps),
+		name= name_for_steps(info:get_steps()),
 		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "steps_action_back"),
 		{
 			name= "edit_chart", translatable= true,
 			execute= function()
-				handle_edit_setup(info.song, info.steps)
+				info:set_edit_type("EditType_Existing")
+				handle_edit_setup(info)
 			end,
 		},
 		{
@@ -149,7 +147,7 @@ local function generate_steps_action(info)
 					THEME:GetString("ScreenEditMenu", "delete_chart_prompt"), 1,
 					function(answer)
 						if answer == "yes" then
-							info.song:delete_steps(info.steps)
+							info:get_song():delete_steps(info:get_steps())
 						end
 						song_menu_stack:pop_menu_stack()
 				end)
@@ -180,22 +178,24 @@ local function get_open_slots(song)
 	return open_slots
 end
 
-local function generate_copy_dest_slot_menu(info)
+local function generate_copy_dest_slot_menu(info, slots)
 	local choices= {
 		name= "copy_dest_slot_menu",
 		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "copy_dest_slot_back"),
 	}
 	for i, diff in ipairs(Difficulty) do
-		if info.slots[diff] then
+		if slots[diff] then
 			local name_format= THEME:GetString("ScreenEditMenu", "copy_to_slot_format")
-			local name= name_format:format(translate_stype(info.stype), translate_diff(diff))
+			local name= name_format:format(translate_stype(info:get_steps_type()), translate_diff(diff))
 			choices[#choices+1]= {
 				name= name, translatable= false,
 				execute= function()
+					info:set_edit_type("EditType_Copy")
 					if diff == "Difficulty_Edit" then
 						handle_edit_description_prompt(info)
 					else
-						handle_edit_setup(info.song, info.steps, info.stype, diff)
+						info:set_difficulty(diff)
+						handle_edit_setup(info)
 					end
 				end,
 			}
@@ -209,14 +209,14 @@ local function generate_copy_dest_menu(info)
 		name= "copy_dest_stype_menu",
 		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "copy_dest_style_back"),
 	}
-	local open_slots= get_open_slots(info.song)
+	local open_slots= get_open_slots(info:get_song())
 	foreach_ordered(
 		open_slots, function(stype, slots)
 			choices[#choices+1]= {
 				name= translate_stype(stype), translatable= false,
 				menu= nesty_option_menus.menu, args= function()
-					return generate_copy_dest_slot_menu{
-						song= info.song, steps= info.steps, stype= stype, slots= slots}
+					info:set_steps_type(stype)
+					return generate_copy_dest_slot_menu(info, slots)
 				end,
 			}
 	end)
@@ -229,34 +229,37 @@ local function generate_copy_menu(info)
 		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "copy_from_back"),
 	}
 	local copyable_steps= {}
-	local all_steps= info.song:get_nonauto_steps()
+	local all_steps= info:get_song():get_nonauto_steps()
 	table.sort(all_steps, steps_compare)
 	for i, steps in ipairs(all_steps) do
 		choices[#choices+1]= {
 			name= name_for_steps(steps), translatable= false,
 			menu= nesty_option_menus.menu, args= function()
-				return generate_copy_dest_menu{song= info.song, steps= steps}
+				info:set_copy_from_steps(steps)
+				return generate_copy_dest_menu(info)
 			end,
 		}
 	end
 	return choices
 end
 
-local function generate_new_chart_slot_menu(info)
+local function generate_auto_create_slot_menu(info, slots)
 	local choices= {
-		name= "new_chart_slot_menu",
-		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "new_chart_slot_back"),
+		name= "auto_create_slot_menu",
+		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "auto_create_slot_back"),
 	}
 	for i, diff in ipairs(Difficulty) do
-		if info.slots[diff] then
-			local name_format= THEME:GetString("ScreenEditMenu", "new_chart_slot_format")
-			local name= name_format:format(translate_stype(info.stype), translate_diff(diff))
+		if slots[diff] then
+			local name_format= THEME:GetString("ScreenEditMenu", "auto_create_slot_format")
+			local name= name_format:format(translate_stype(info:get_steps_type()), translate_diff(diff))
 			choices[#choices+1]= {
 				name= name, translatable= false, execute= function()
+					info:set_edit_type("EditType_AutoCreate")
 					if diff == "Difficulty_Edit" then
 						handle_edit_description_prompt(info)
 					else
-						handle_edit_setup(info.song, info.steps, info.stype, diff)
+						info:set_difficulty(diff)
+						handle_edit_setup(info)
 					end
 				end,
 			}
@@ -265,19 +268,83 @@ local function generate_new_chart_slot_menu(info)
 	return choices
 end
 
-local function generate_new_chart_stype_menu(info)
+local function generate_auto_create_chart_menu(info)
 	local choices= {
-		name= "new_chart_stype_menu",
-		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "new_chart_stype_back"),
+		name= "auto_create_stype_menu",
+		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "auto_create_stype_back"),
 	}
-	local open_slots= get_open_slots(info.song)
+	local open_slots= get_open_slots(info:get_song())
 	foreach_ordered(
 		open_slots, function(stype, slots)
 			choices[#choices+1]= {
 				name= translate_stype(stype), translatable= false,
 				menu= nesty_option_menus.menu, args= function()
-					return generate_new_chart_slot_menu{
-						song= info.song, stype= stype, slots= slots}
+					info:set_steps_type(stype)
+					return generate_auto_create_slot_menu(info, slots)
+				end,
+			}
+	end)
+	return choices
+end
+
+local function generate_auto_create_from_menu(info)
+	local choices= {
+		name= "auto_create_from_menu",
+		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "auto_create_from_menu"),
+	}
+	local copyable_steps= {}
+	local all_steps= info:get_song():get_nonauto_steps()
+	table.sort(all_steps, steps_compare)
+	for i, steps in ipairs(all_steps) do
+		choices[#choices+1]= {
+			name= name_for_steps(steps), translatable= false,
+			menu= nesty_option_menus.menu, args= function()
+				info:set_copy_from_steps(steps)
+				return generate_auto_create_chart_menu(info)
+			end,
+		}
+	end
+	return choices
+end
+
+local function generate_new_chart_slot_menu(info, slots)
+	local choices= {
+		name= "new_chart_slot_menu",
+		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "new_chart_slot_back"),
+	}
+	for i, diff in ipairs(Difficulty) do
+		if slots[diff] then
+			local name_format= THEME:GetString("ScreenEditMenu", "new_chart_slot_format")
+			local name= name_format:format(translate_stype(info:get_steps_type()), translate_diff(diff))
+			choices[#choices+1]= {
+				name= name, translatable= false, execute= function()
+					info:set_edit_type("EditType_Blank")
+					if diff == "Difficulty_Edit" then
+						handle_edit_description_prompt(info)
+					else
+						info:set_difficulty(diff)
+						handle_edit_setup(info)
+					end
+				end,
+			}
+		end
+	end
+	return choices
+end
+
+local function generate_new_chart_stype_menu(info, slots)
+	local choices= {
+		name= "new_chart_stype_menu",
+		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "new_chart_stype_back"),
+	}
+	local open_slots= get_open_slots(info:get_song())
+	foreach_ordered(
+		open_slots, function(stype, slots)
+			choices[#choices+1]= {
+				name= translate_stype(stype), translatable= false,
+				menu= nesty_option_menus.menu, args= function()
+					info:set_steps_type(stype)
+					return generate_new_chart_slot_menu(info, slots)
 				end,
 			}
 	end)
@@ -307,7 +374,10 @@ local function generate_steps_list(song)
 			choices[#choices+1]= {
 				name= name_for_steps(steps), translatable= false,
 				menu= nesty_option_menus.menu, args= function()
-					return generate_steps_action{song= song, steps= steps}
+					info = GAMESTATE:CreateEditParams()
+					info:set_song(song)
+					info:set_steps(steps)
+					return generate_steps_action(info)
 				end,
 				on_focus= function()
 					MESSAGEMAN:Broadcast("edit_menu_selection_changed", {steps= steps})
@@ -318,13 +388,25 @@ local function generate_steps_list(song)
 	choices[#choices+1]= {
 		name= "new_chart", translatable= true,
 		menu= nesty_option_menus.menu, args= function()
-			return generate_new_chart_stype_menu{song= song}
+			info = GAMESTATE:CreateEditParams()
+			info:set_song(song)
+			return generate_new_chart_stype_menu(info)
 		end,
 	}
 	choices[#choices+1]= {
 		name= "copy_from", translatable= true,
 		menu= nesty_option_menus.menu, args= function()
-			return generate_copy_menu{song= song}
+			info = GAMESTATE:CreateEditParams()
+			info:set_song(song)
+			return generate_copy_menu(info)
+		end,
+	}
+	choices[#choices+1]= {
+		name= "auto_create", translatable= true,
+		menu= nesty_option_menus.menu, args= function()
+			info = GAMESTATE:CreateEditParams()
+			info:set_song(song)
+			return generate_auto_create_from_menu(info)
 		end,
 	}
 	return choices
@@ -379,7 +461,10 @@ local function recently_edited_menu()
 						shorten_name(song:GetDisplayFullTitle()) .. " &leftarrow; " ..
 						name_for_steps(steps),
 					execute= function()
-						handle_edit_setup(song, steps)
+						info = GAMESTATE:CreateEditParams()
+						info:set_song(song)
+						info:set_steps(steps)
+						handle_edit_setup(info)
 					end,
 					on_focus= function()
 						MESSAGEMAN:Broadcast("edit_menu_selection_changed", {song= song, steps= steps})
@@ -467,7 +552,7 @@ function edit_pick_menu_steps_display_item(
 			end,
 			transform= steps_transform,
 			set= function(self, info)
-				self.info= into
+				self.info= info
 				if not info then
 					self.container:visible(false)
 					return
