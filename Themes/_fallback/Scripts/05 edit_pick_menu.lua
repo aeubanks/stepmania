@@ -82,6 +82,10 @@ local function steps_compare(left, right)
 	end
 end
 
+local function stype_compare(left, right)
+	return StepsType:Compare(left, right) < 0
+end
+
 -- TODO: Allow picking any stepstype.
 local editable_stepstypes= {}
 do
@@ -261,7 +265,7 @@ local function generate_new_chart_slot_menu(info)
 	return choices
 end
 
-local function generate_new_chart_stype_menu(info) 
+local function generate_new_chart_stype_menu(info)
 	local choices= {
 		name= "new_chart_stype_menu",
 		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "new_chart_stype_back"),
@@ -558,7 +562,7 @@ function edit_pick_menu_update_steps_display_info(steps_display)
 				end
 				by_steps_type[stype][#by_steps_type[stype]+1]= steps
 			end
-			table.sort(type_names)
+			table.sort(type_names, stype_compare)
 			local steps_info_set= {}
 			for i, name in ipairs(type_names) do
 				table.sort(by_steps_type[name], steps_compare)
