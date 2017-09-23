@@ -31,6 +31,7 @@
 #include "RageLog.h"
 #include "RageUtil.h"
 #include "RageFmtWrap.h"
+#include "ScreenEdit.h"
 #include "Song.h"
 #include "SongManager.h"
 #include "SongUtil.h"
@@ -2099,7 +2100,7 @@ void GameState::GetRankingFeats( PlayerNumber pn, vector<RankingFeat> &asFeatsOu
 	// may have made high scores then switched modes.
 	PlayMode mode = m_PlayMode.Get();
 	char const *modeStr = PlayModeToString(mode).c_str();
-	
+
 	CHECKPOINT_M( fmt::sprintf("Getting the feats for %s", modeStr));
 	switch( mode )
 	{
@@ -3298,64 +3299,98 @@ public:
 		COMMON_RETURN_SELF;
 	}
 
+	static int CreateEditParams( T* p, lua_State *L )
+	{
+		EditParams* edit_params = new EditParams;
+		edit_params->PushSelf(L);
+		return 1;
+	}
+
 	static int SetStepsForEditMode(T* p, lua_State *L)
 	{
 		// Arg forms:
 		// 1.  Edit existing steps:
-		//    song, steps
+		//    EDIT_TYPE_EXISTING, song, steps
 		// 2.  Create new steps to edit:
-		//    song, nil, stepstype, difficulty, description
+		//    EDIT_TYPE_BLANK, song, stepstype, difficulty, description
 		// 3.  Copy steps to new difficulty to edit:
-		//    song, steps, stepstype, difficulty, description
+		//    EDIT_TYPE_COPY, song, steps, stepstype, difficulty, description
 		// Description field is optional.
-		Song* song= Luna<Song>::check(L, 1);
-		Steps* steps= nullptr;
-		if(!lua_isnil(L, 2))
+		EditParams* edit_params = Luna<EditParams>::check(L, 1);
+		Song* song = edit_params->m_Song;
+		Steps* steps = edit_params->m_Steps;
+		switch (edit_params->m_EditType)
 		{
-			steps= Luna<Steps>::check(L, 2);
+			case EDIT_TYPE_EXISTING:
+			{
+				p->set_curr_song(song);
+				p->m_pCurSteps[PLAYER_1].Set(steps);
+				p->SetCurrentStyle(GAMEMAN->GetEditorStyleForStepsType(
+						steps->m_StepsType), PLAYER_INVALID);
+				p->m_pCurCourse.Set(nullptr);
+				steps->PushSelf(L);
+				break;
+			}
+			case EDIT_TYPE_BLANK:
+			case EDIT_TYPE_COPY:
+			case EDIT_TYPE_AUTO_CREATE:
+			{
+				StepsType stype = edit_params->m_StepsType;
+				Difficulty diff = edit_params->m_Difficulty;
+				Steps* new_steps = song->CreateSteps();
+				std::string edit_name = edit_params->m_EditName;
+				switch (edit_params->m_EditType)
+				{
+					case EDIT_TYPE_BLANK:
+					{
+						new_steps->CreateBlank(stype);
+						new_steps->SetMeter(1);
+						break;
+					}
+					case EDIT_TYPE_COPY:
+					{
+						new_steps->CopyFrom(edit_params->m_StepsCopyFrom, stype, song->m_fMusicLengthSeconds);
+						if (edit_name.empty())
+						{
+							edit_name = edit_params->m_StepsCopyFrom->GetDescription();
+						}
+						break;
+					}
+					case EDIT_TYPE_AUTO_CREATE:
+					{
+						AutoCreateSteps::AutoCreateParameters params;
+						params.maxTurnDegree = 89;
+						params.uncomfortableTurnDegree = 89;
+						params.uncomfortableRepetitions = 2;
+						params.maxDeltaTurnDegree = 180;
+						params.uncomfortableDeltaTurnDegree = 180;
+						params.maxDistBetweenTwoFeet = std::sqrt(8.0f);
+						params.uncomfortableDistBetweenTwoFeet = 2.0f;
+						params.maxDistBetweenSameFoot = std::sqrt(5.0f);
+						params.uncomfortableDistBetweenSameFoot = std::sqrt(5.0f);
+
+						params.uncomfortableRepetitionsDecay = 0.5f;
+						params.uncomfortableTurnDegreeDecay = 0.5f;
+						params.uncomfortableDeltaTurnDegreeDecay = 0.5f;
+						params.uncomfortableDistBetweenSameFootDecay = 0.5f;
+						params.uncomfortableDistBetweenTwoFeetDecay = 0.5f;
+						new_steps->AutoCreate(edit_params->m_StepsCopyFrom, stype, params);
+						break;
+					}
+				}
+
+				edit_name = SongUtil::MakeUniqueEditDescription(song, stype, edit_name);
+				new_steps->SetDescription(edit_name);
+				new_steps->SetDifficulty(diff);
+				song->AddSteps(new_steps);
+				p->set_curr_song(song);
+				p->m_pCurSteps[PLAYER_1].Set(new_steps);
+				p->SetCurrentStyle(GAMEMAN->GetEditorStyleForStepsType(
+						new_steps->m_StepsType), PLAYER_INVALID);
+				p->m_pCurCourse.Set(nullptr);
+				new_steps->PushSelf(L);
+			}
 		}
-		// Form 1.
-		if(steps != nullptr && lua_gettop(L) == 2)
-		{
-			p->set_curr_song(song);
-			p->m_pCurSteps[PLAYER_1].Set(steps);
-			p->SetCurrentStyle(GAMEMAN->GetEditorStyleForStepsType(
-					steps->m_StepsType), PLAYER_INVALID);
-			p->m_pCurCourse.Set(nullptr);
-			steps->PushSelf(L);
-			return 1;
-		}
-		StepsType stype= Enum::Check<StepsType>(L, 3);
-		Difficulty diff= Enum::Check<Difficulty>(L, 4);
-		Steps* new_steps= song->CreateSteps();
-		std::string edit_name;
-		// Form 2.
-		if(steps == nullptr)
-		{
-			new_steps->CreateBlank(stype);
-			new_steps->SetMeter(1);
-			edit_name= "";
-		}
-		// Form 3.
-		else
-		{
-			new_steps->CopyFrom(steps, stype, song->m_fMusicLengthSeconds);
-			edit_name= steps->GetDescription();
-		}
-		if(lua_isstring(L, 5))
-		{
-			edit_name= SArg(5);
-		}
-		edit_name= SongUtil::MakeUniqueEditDescription(song, stype, edit_name);
-		new_steps->SetDifficulty(diff);
-		new_steps->SetDescription(edit_name);
-		song->AddSteps(new_steps);
-		p->set_curr_song(song);
-		p->m_pCurSteps[PLAYER_1].Set(new_steps);
-		p->SetCurrentStyle(GAMEMAN->GetEditorStyleForStepsType(
-				new_steps->m_StepsType), PLAYER_INVALID);
-		p->m_pCurCourse.Set(nullptr);
-		new_steps->PushSelf(L);
 		return 1;
 	}
 
@@ -3514,6 +3549,7 @@ public:
 		ADD_METHOD( SetCurrentStyle );
 		ADD_METHOD( SetCurrentPlayMode );
 		ADD_METHOD( SetStepsForEditMode );
+		ADD_METHOD( CreateEditParams );
 		ADD_METHOD( GetAutoGenFarg );
 		ADD_METHOD( SetAutoGenFarg );
 		ADD_METHOD(prepare_song_for_gameplay);

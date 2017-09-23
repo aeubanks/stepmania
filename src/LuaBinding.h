@@ -249,19 +249,28 @@ static int set_##val_name(T* p, lua_State* L) \
 	COMMON_RETURN_SELF; \
 }
 
+#define GET_SET_POINTER_MEMBER(method_name, type, val_name) \
+DEFINE_METHOD(get_##method_name, val_name) \
+static int set_##method_name(T* p, lua_State* L) \
+{ \
+	p->val_name = Luna<type>::check(L, 1); \
+	COMMON_RETURN_SELF; \
+}
+
+
 #define ADD_METHOD( method_name ) \
 	AddMethod( #method_name, method_name )
 #define ADD_GET_SET_METHODS(method_name) \
 	ADD_METHOD(get_##method_name); ADD_METHOD(set_##method_name);
-#define LUA_SET_MEMBER(member, arg_conv) \
-static int set_##member(T* p, lua_State* L) \
+#define LUA_SET_MEMBER(method_name, member, arg_conv) \
+static int set_##method_name(T* p, lua_State* L) \
 { \
-	p->m_##member= arg_conv(1); \
+	p->member = arg_conv(1); \
 	COMMON_RETURN_SELF; \
 }
-#define GET_SET_MEMBER(member, arg_conv) \
-DEFINE_METHOD(get_##member, m_##member); \
-LUA_SET_MEMBER(member, arg_conv);
+#define GET_SET_MEMBER(method_name, member, arg_conv) \
+DEFINE_METHOD(get_##method_name, member); \
+LUA_SET_MEMBER(method_name, member, arg_conv);
 
 #define LUA_REGISTER_NAMESPACE( T ) \
 	static void Register##T( lua_State *L ) { luaL_register( L, #T, T##Table ); lua_pop( L, 1 ); } \

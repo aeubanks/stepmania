@@ -537,6 +537,16 @@ void Steps::CopyFrom( Steps* pSource, StepsType ntTo, float fMusicLengthSeconds 
 	this->CalculateRadarValues( fMusicLengthSeconds );
 }
 
+void Steps::AutoCreate( Steps* pSource, StepsType ntTo, AutoCreateSteps::AutoCreateParameters params )
+{
+	m_StepsType = ntTo;
+	NoteData from = pSource->GetNoteData();
+	NoteData noteData;
+	noteData.SetNumTracks( GAMEMAN->GetStepsTypeInfo(ntTo).iNumTracks );
+	AutoCreateSteps::AutoCreateSteps( noteData, ntTo, params, from );
+	this->SetNoteData( noteData );
+}
+
 void Steps::CreateBlank( StepsType ntTo )
 {
 	m_StepsType = ntTo;

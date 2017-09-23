@@ -23,6 +23,46 @@
 const int NUM_EDIT_BUTTON_COLUMNS = 10;
 struct MenuDef;
 
+/** @brief What kind of chart is being edited/created? */
+enum EditType
+{
+	EDIT_TYPE_EXISTING,
+	EDIT_TYPE_BLANK,
+	EDIT_TYPE_COPY,
+	EDIT_TYPE_AUTO_CREATE,
+	NUM_EditType,
+	EditType_Invalid,
+};
+std::string const EditTypeToString( EditType et );
+LuaDeclareType( EditType );
+
+/** @brief Necessary parameters to choose what chart is being edited/created. */
+struct EditParams
+{
+	EditType m_EditType;
+	Song* m_Song;
+	Steps* m_Steps;
+	Difficulty m_Difficulty;
+	StepsType m_StepsType;
+	Steps* m_StepsCopyFrom;
+	std::string m_EditName;
+
+	EditParams():
+		m_EditType(EditType_Invalid),
+		m_Song(nullptr),
+		m_Steps(nullptr),
+		m_Difficulty(Difficulty_Invalid),
+		m_StepsType(StepsType_Invalid),
+		m_StepsCopyFrom(nullptr),
+		m_EditName()
+	{}
+
+	// Lua
+	void PushSelf( lua_State *L );
+};
+std::string const EditParamsToString( EditParams ep );
+LuaDeclareType( EditParams );
+
 /** @brief What is going on with the Editor? */
 enum EditState
 {
@@ -63,14 +103,14 @@ enum EditButton
 	EDIT_BUTTON_LAY_ROLL,
 	EDIT_BUTTON_LAY_TAP_ATTACK,
 	EDIT_BUTTON_REMOVE_NOTE,
-	
+
 	// These are modifiers to change the present tap note.
 	EDIT_BUTTON_CYCLE_TAP_LEFT, /**< Rotate the available tap notes once to the "left". */
 	EDIT_BUTTON_CYCLE_TAP_RIGHT, /**< Rotate the available tap notes once to the "right". */
 
 	EDIT_BUTTON_CYCLE_SEGMENT_LEFT, /**< Select one segment to the left for jumping. */
 	EDIT_BUTTON_CYCLE_SEGMENT_RIGHT, /**< Select one segment to the right for jumping. */
-	
+
 	EDIT_BUTTON_SCROLL_UP_LINE,
 	EDIT_BUTTON_SCROLL_UP_PAGE,
 	EDIT_BUTTON_SCROLL_UP_TS,
@@ -86,7 +126,7 @@ enum EditButton
 
 	EDIT_BUTTON_SEGMENT_NEXT, /**< Jump to the start of the next segment downward. */
 	EDIT_BUTTON_SEGMENT_PREV, /**< Jump to the start of the previous segment upward. */
-	
+
 	// These are modifiers to EDIT_BUTTON_SCROLL_*.
 	EDIT_BUTTON_SCROLL_SELECT,
 
@@ -106,12 +146,12 @@ enum EditButton
 	EDIT_BUTTON_OPEN_BGCHANGE_LAYER2_MENU,
 	EDIT_BUTTON_OPEN_COURSE_MENU,
 	EDIT_BUTTON_OPEN_COURSE_ATTACK_MENU,
-	
+
 	EDIT_BUTTON_OPEN_STEP_ATTACK_MENU, /**< Open up the Step Attacks menu. */
 	EDIT_BUTTON_ADD_STEP_MODS, /**< Add a mod attack to the row. */
-	
+
 	EDIT_BUTTON_OPEN_INPUT_HELP,
-	
+
 	EDIT_BUTTON_BAKE_RANDOM_FROM_SONG_GROUP,
 	EDIT_BUTTON_BAKE_RANDOM_FROM_SONG_GROUP_AND_GENRE,
 
@@ -141,10 +181,10 @@ enum EditButton
 	EDIT_BUTTON_BPM_DOWN,
 	EDIT_BUTTON_STOP_UP,
 	EDIT_BUTTON_STOP_DOWN,
-	
+
 	EDIT_BUTTON_DELAY_UP,
 	EDIT_BUTTON_DELAY_DOWN,
-	
+
 	EDIT_BUTTON_OFFSET_UP,
 	EDIT_BUTTON_OFFSET_DOWN,
 	EDIT_BUTTON_SAMPLE_START_UP,
@@ -157,11 +197,11 @@ enum EditButton
 	EDIT_BUTTON_SAVE, /**< Save the present changes into the chart. */
 
 	EDIT_BUTTON_UNDO, /**< Undo a recent change. */
-	
+
 	EDIT_BUTTON_ADD_COURSE_MODS,
-	
+
 	EDIT_BUTTON_SWITCH_PLAYERS, /**< Allow entering notes for a different Player. */
-	
+
 	EDIT_BUTTON_SWITCH_TIMINGS, /**< Allow switching between Song and Step TimingData. */
 
 	EDIT_BUTTON_CHANGE_BG_LAYER, // Only bg changes on one layer are drawn. -Kyz
@@ -240,9 +280,9 @@ public:
 
 protected:
 	virtual ScreenType GetScreenType() const
-	{ 
-		return m_EditState==STATE_PLAYING ? 
-		gameplay : 
+	{
+		return m_EditState==STATE_PLAYING ?
+		gameplay :
 		ScreenWithMenuElements::GetScreenType();
 	}
 
@@ -273,9 +313,9 @@ protected:
 
 	/** @brief Display the step attack menu for the current row. */
 	void DoStepAttackMenu();
-	
+
 	void DoHelp();
-	
+
 	/** @brief Display the TimingData menu for editing song and step timing. */
 	void DisplayTimingMenu();
 
@@ -286,7 +326,7 @@ protected:
 		menu_is_for_clearing
 	};
 	TimingChangeMenuPurpose m_timing_change_menu_purpose;
-	int m_timing_rows_being_shitted; // How far the timing is being shitted.
+	int m_timing_rows_being_shifted; // How far the timing is being shifted.
 	void DisplayTimingChangeMenu();
 
 	EditState		m_EditState;
@@ -304,7 +344,7 @@ protected:
 	size_t m_curr_speed_choice;
 	float m_curr_speed;
 	float m_goal_speed;
-	
+
 	/** @brief The player options before messing with attacks. */
 	ModsGroup<PlayerOptions>	originalPlayerOptions;
 
@@ -314,25 +354,25 @@ protected:
 	// message when it finishes. -Kyz
 	AutoActor m_option_menu;
 	bool m_in_option_menu;
-	
+
 	/**
 	 * @brief Keep a backup of the present Step TimingData when
 	 * entering a playing or recording state.
 	 *
 	 * This is mainly to allow playing a chart with Song Timing. */
 	TimingData		backupStepTiming;
-	
+
 	/**
 	 * @brief Allow for copying and pasting a song's (or steps's) full Timing Data.
 	 */
 	TimingData		clipboardFullTiming;
-	
+
 	/** @brief The current TapNote that would be inserted. */
 	TapNote			m_selectedTap;
 
 	/** @brief The type of segment users will jump back and forth between. */
 	TimingSegmentType	currentCycleSegment;
-	
+
 	void UpdateTextInfo();
 	BitmapText		m_textInfo; // status information that changes
 	bool			m_bTextInfoNeedsUpdate;
@@ -465,10 +505,10 @@ public:
 		routine_invert_notes, /**< Switch which player hits the note. */
 		routine_mirror_1_to_2, /**< Mirror Player 1's notes for Player 2. */
 		routine_mirror_2_to_1, /**< Mirror Player 2's notes for Player 1. */
+		autocreate, /**< Auto create steps in area. */
 		NUM_ALTER_MENU_CHOICES
-		
 	};
-	
+
 	enum AreaMenuChoice
 	{
 		paste_at_current_beat, /**< Paste note data starting at the current beat. */
@@ -486,6 +526,16 @@ public:
 		modify_keysounds_at_row, /**< Modify the keysounds at this row. */
 		NUM_AREA_MENU_CHOICES
 	};
+
+	enum AutoCreateMenuChoice
+	{
+		autocreate_space,
+		autocreate_max_turn,
+		autocreate_uncomfortable_turn,
+		autocreate_generate,
+		NUM_AUTO_CREATE_MENU_CHOICES
+	};
+
 	void HandleArbitraryRemapping(std::string const& mapstr);
 	void HandleAlterMenuChoice(AlterMenuChoice choice,
 		const vector<int> &answers, bool allow_undo= true,
@@ -495,10 +545,12 @@ public:
 	{
 		const vector<int> v; HandleAlterMenuChoice(c, v, allow_undo, prompt_clear);
 	}
-	
+
+	void HandleAutoCreateMenuChoice( AutoCreateMenuChoice c, const vector<int> &iAnswers );
+
 	void HandleAreaMenuChoice( AreaMenuChoice c, const vector<int> &iAnswers, bool bAllowUndo = true );
 	void HandleAreaMenuChoice( AreaMenuChoice c, bool bAllowUndo = true )
-	{ 
+	{
 		const vector<int> v; HandleAreaMenuChoice( c, v, bAllowUndo );
 	}
 	/** @brief How should the selected notes be transformed? */
@@ -510,30 +562,30 @@ public:
 		turn_backwards, /**< Turn the notes as if you were facing away from the machine. */
 		shuffle, /**< Replace one column with another column. */
 		super_shuffle, /**< Replace each note individually. */
-		NUM_TURN_TYPES 
+		NUM_TURN_TYPES
 	};
 	enum TransformType
 	{
-		noholds, 
-		nomines, 
-		little, 
-		wide, 
-		big, 
-		quick, 
-		skippy, 
-		add_mines, 
-		echo, 
-		stomp, 
-		planted, 
-		floored, 
-		twister, 
-		nojumps, 
-		nohands, 
-		noquads, 
+		noholds,
+		nomines,
+		little,
+		wide,
+		big,
+		quick,
+		skippy,
+		add_mines,
+		echo,
+		stomp,
+		planted,
+		floored,
+		twister,
+		nojumps,
+		nohands,
+		noquads,
 		nostretch,
-		NUM_TRANSFORM_TYPES 
+		NUM_TRANSFORM_TYPES
 	};
-	enum AlterType 
+	enum AlterType
 	{
 		autogen_to_fill_width,
 		backwards,
@@ -548,17 +600,17 @@ public:
 		shift_right,
 		swap_up_down,
 		arbitrary_remap,
-		NUM_ALTER_TYPES 
+		NUM_ALTER_TYPES
 	};
-	enum TempoType 
-	{ 
-		compress_2x, 
-		compress_3_2, 
-		compress_4_3, 
-		expand_4_3, 
-		expand_3_2, 
-		expand_2x, 
-		NUM_TEMPO_TYPES 
+	enum TempoType
+	{
+		compress_2x,
+		compress_3_2,
+		compress_4_3,
+		expand_4_3,
+		expand_3_2,
+		expand_2x,
+		NUM_TEMPO_TYPES
 	};
 
 	enum StepsInformationChoice
@@ -577,7 +629,7 @@ public:
 		NUM_STEPS_INFORMATION_CHOICES
 	};
 	void HandleStepsInformationChoice( StepsInformationChoice c, const vector<int> &iAnswers );
-	
+
 	enum StepsDataChoice
 	{
 		tap_notes,
@@ -618,7 +670,7 @@ public:
 		NUM_SONG_INFORMATION_CHOICES
 	};
 	void HandleSongInformationChoice( SongInformationChoice c, const vector<int> &iAnswers );
-	
+
 	enum TimingDataInformationChoice
 	{
 		beat_0_offset,
@@ -695,7 +747,7 @@ public:
 		delete_change,
 		NUM_BGCHANGE_CHOICES
 	};
-	
+
 	enum SpeedSegmentModes
 	{
 		SSMODE_Beats,
@@ -717,7 +769,7 @@ public:
 		remove,
 		NUM_CourseAttackChoice
 	};
-	
+
 	enum StepAttackChoice
 	{
 		sa_duration,
@@ -745,10 +797,10 @@ public:
 	MapEditButtonToMenuButton m_RecordPausedMappingsMenuButton;
 
 	void MakeFilteredMenuDef( const MenuDef* pDef, MenuDef &menu );
-	void EditMiniMenu(const MenuDef* pDef, 
-			  ScreenMessage SM_SendOnOK = SM_None, 
+	void EditMiniMenu(const MenuDef* pDef,
+			  ScreenMessage SM_SendOnOK = SM_None,
 			  ScreenMessage SM_SendOnCancel = SM_None );
-	
+
 	int attackInProcess;
 	int modInProcess;
 private:
@@ -766,7 +818,7 @@ private:
 	void SetBeat(float fBeat);
 	float GetBeat();
 	int GetRow();
-	
+
 };
 
 #endif
@@ -774,7 +826,7 @@ private:
 /*
  * (c) 2001-2004 Chris Danford
  * All rights reserved.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -784,7 +836,7 @@ private:
  * copyright notice(s) and this permission notice appear in all copies of
  * the Software and that both the above copyright notice(s) and this
  * permission notice appear in supporting documentation.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF

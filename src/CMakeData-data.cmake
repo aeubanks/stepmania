@@ -47,15 +47,19 @@ list(APPEND SM_DATA_COURSE_HPP
 source_group("Data Structures\\\\Courses and Trails" FILES ${SM_DATA_COURSE_SRC} ${SM_DATA_COURSE_HPP})
 
 list(APPEND SM_DATA_NOTEDATA_SRC
+  "AutoCreateSteps.cpp"
   "NoteData.cpp"
   "NoteDataUtil.cpp"
   "NoteDataWithScoring.cpp"
+  "PanelCoord.cpp"
 )
 
 list(APPEND SM_DATA_NOTEDATA_HPP
+  "AutoCreateSteps.h"
   "NoteData.h"
   "NoteDataUtil.h"
   "NoteDataWithScoring.h"
+  "PanelCoord.h"
 )
 
 source_group("Data Structures\\\\Note Data" FILES ${SM_DATA_NOTEDATA_SRC} ${SM_DATA_NOTEDATA_HPP})

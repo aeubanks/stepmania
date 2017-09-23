@@ -8,6 +8,7 @@
 
 #include "ActorUtil.h"
 #include "AdjustSync.h"
+#include "AutoCreateSteps.h"
 #include "BackgroundUtil.h"
 #include "CommonMetrics.h"
 #include "GameManager.h"
@@ -95,6 +96,8 @@ AutoScreenMessage( SM_BackFromInsertCourseAttackPlayerOptions );
 AutoScreenMessage( SM_BackFromCourseModeMenu );
 AutoScreenMessage( SM_BackFromKeysoundTrack );
 AutoScreenMessage( SM_BackFromNewKeysound );
+AutoScreenMessage( SM_BackFromAutoCreateMenu );
+AutoScreenMessage( SM_BackFromAutoCreateMaxTurnChange );
 AutoScreenMessage( SM_DoRevertToLastSave );
 AutoScreenMessage( SM_DoRevertFromDisk );
 AutoScreenMessage( SM_ConfirmClearArea );
@@ -131,6 +134,15 @@ static const char *EditStateNames[] = {
 };
 XToString( EditState );
 LuaXType( EditState );
+
+static const char *EditTypeNames[] = {
+	"Existing",
+	"Blank",
+	"Copy",
+	"AutoCreate",
+};
+XToString( EditType );
+LuaXType( EditType );
 
 std::unordered_map<std::string, EditButton> name_to_edit_button;
 
@@ -884,6 +896,8 @@ static MenuDef g_AlterMenu(
 		true, EditMode_Practice, true, true, 0),
 	MenuRowDef(ScreenEdit::clear,			"Clear area",				true,
 	      EditMode_Practice, true, true, 0),
+	MenuRowDef(ScreenEdit::autocreate,			"Auto Create",				true,
+		EditMode_Practice, true, true, 0),
 	MenuRowDef(ScreenEdit::quantize,			"Quantize",				true,
 	      EditMode_Practice, true, true, 0,
 	      "4th","8th","12th","16th","24th","32nd","48th","64th","192nd"),
@@ -990,7 +1004,22 @@ static MenuDef g_AreaMenu(
 	MenuRowDef(ScreenEdit::modify_keysounds_at_row,
 		"Modify Keysounds at current beat",
 		true, EditMode_Full, true, true, 0)
+);
 
+static MenuDef g_AutoCreateMenu(
+	"ScreenMiniMenuAutoCreate",
+	MenuRowDef(ScreenEdit::autocreate_space,
+		"Space",
+		true, EditMode_Practice, true, true, RCC_CHOICES),
+	MenuRowDef(ScreenEdit::autocreate_max_turn,
+		"Max Turn Degree",
+		true, EditMode_Practice, true, true, 0, "45", "90", "135", "180", "225", "270"),
+	MenuRowDef(ScreenEdit::autocreate_uncomfortable_turn,
+		"Uncomfortable Turn Degree",
+		true, EditMode_Practice, true, true, 0, "45", "90", "135", "180", "225", "270"),
+	MenuRowDef(ScreenEdit::autocreate_generate,
+		"Generate Steps",
+		true, EditMode_Practice, true, true, 0)
 );
 
 static MenuDef g_StepsInformation(
@@ -3818,6 +3847,10 @@ void ScreenEdit::HandleScreenMessage( const ScreenMessage SM )
 	{
 		HandleAlterMenuChoice( (AlterMenuChoice)ScreenMiniMenu::s_iLastRowCode, ScreenMiniMenu::s_viLastAnswers );
 	}
+	else if( SM == SM_BackFromAutoCreateMenu )
+	{
+		HandleAutoCreateMenuChoice( (AutoCreateMenuChoice)ScreenMiniMenu::s_iLastRowCode, ScreenMiniMenu::s_viLastAnswers );
+	}
 	else if( SM == SM_BackFromArbitraryRemap )
 	{
 		HandleArbitraryRemapping(ScreenTextEntry::s_sLastAnswer);
@@ -5412,6 +5445,13 @@ void ScreenEdit::HandleAlterMenuChoice(AlterMenuChoice c, const vector<int> &ans
 			NoteDataUtil::ConvertAdditionsToRegular( m_NoteDataEdit );
 			break;
 		}
+		case autocreate:
+		{
+			// g_AutoCreateMenu.rows[autocreate_space].iDefaultChoice;
+			// g_AutoCreateMenu.rows[autocreate_notes_per_row].iDefaultChoice = pSteps->GetDifficulty();
+			EditMiniMenu( &g_AutoCreateMenu, SM_BackFromAutoCreateMenu, SM_None );
+			break;
+		}
 		case alter:
 		{
 			const NoteData OldClipboard( m_Clipboard );
@@ -5675,6 +5715,42 @@ void ScreenEdit::HandleAlterMenuChoice(AlterMenuChoice c, const vector<int> &ans
 		default: break;
 	}
 
+}
+
+void ScreenEdit::HandleAutoCreateMenuChoice(AutoCreateMenuChoice c, const vector<int> &answers)
+{
+	double selection_start= m_NoteFieldEdit.get_selection_start();
+	double selection_end= m_NoteFieldEdit.get_selection_end();
+	ASSERT_M(selection_start != -1.0 && selection_end != -1.0,
+		"The editor should have prevented opening the alter menu with nothing selected.");
+
+	switch(c)
+	{
+		case autocreate_generate:
+		{
+			AutoCreateSteps::AutoCreateParameters params;
+			params.noteSpace = GetRowsFromAnswers(autocreate_space, answers);
+			params.maxTurnDegree = answers[autocreate_max_turn] * 45 + 45;
+			params.uncomfortableTurnDegree = answers[autocreate_uncomfortable_turn] * 45 + 45;
+			params.maxDeltaTurnDegree = 180;
+			params.uncomfortableDeltaTurnDegree = 180;
+			params.uncomfortableRepetitions = 2;
+			params.maxDistBetweenTwoFeet = std::sqrt(8.0f);
+			params.uncomfortableDistBetweenTwoFeet = 2.0f;
+			params.maxDistBetweenSameFoot = std::sqrt(5.0f);
+			params.uncomfortableDistBetweenSameFoot = std::sqrt(5.0f);
+
+			params.uncomfortableRepetitionsDecay = 0.5f;
+			params.uncomfortableTurnDegreeDecay = 0.5f;
+			params.uncomfortableDeltaTurnDegreeDecay = 0.5f;
+			params.uncomfortableDistBetweenSameFootDecay = 0.5f;
+			params.uncomfortableDistBetweenTwoFeetDecay = 0.5f;
+
+			StepsType curType = GAMESTATE->m_pCurSteps[PLAYER_1]->m_StepsType;
+			AutoCreateSteps::AutoCreateSteps( m_NoteDataEdit, curType, params, BeatToNoteRow(selection_start), BeatToNoteRow(selection_end) );
+		}
+		default: break;
+	}
 }
 
 void ScreenEdit::HandleAreaMenuChoice( AreaMenuChoice c, const vector<int> &iAnswers, bool bAllowUndo )
@@ -6120,12 +6196,12 @@ void ScreenEdit::HandleTimingDataInformationChoice( TimingDataInformationChoice 
 		}
 		case shift_timing_in_region_down:
 			m_timing_change_menu_purpose= menu_is_for_shifting;
-			m_timing_rows_being_shitted= GetRowsFromAnswers(c, iAnswers);
+			m_timing_rows_being_shifted= GetRowsFromAnswers(c, iAnswers);
 			DisplayTimingChangeMenu();
 			break;
 		case shift_timing_in_region_up:
 			m_timing_change_menu_purpose= menu_is_for_shifting;
-			m_timing_rows_being_shitted= -GetRowsFromAnswers(c, iAnswers);
+			m_timing_rows_being_shifted= -GetRowsFromAnswers(c, iAnswers);
 			DisplayTimingChangeMenu();
 			break;
 		case copy_timing_in_region:
@@ -6225,7 +6301,7 @@ void ScreenEdit::HandleTimingDataChangeChoice(TimingDataChangeChoice choice,
 			GetAppropriateTiming().CopyRange(begin, end, change_type, 0, clipboardFullTiming);
 			break;
 		case menu_is_for_shifting:
-			GetAppropriateTimingForUpdate().ShiftRange(begin, end, change_type, m_timing_rows_being_shitted);
+			GetAppropriateTimingForUpdate().ShiftRange(begin, end, change_type, m_timing_rows_being_shifted);
 			break;
 		case menu_is_for_clearing:
 			GetAppropriateTimingForUpdate().ClearRange(begin, end, change_type);
@@ -6791,6 +6867,33 @@ public:
 };
 
 LUA_REGISTER_DERIVED_CLASS( ScreenEdit, ScreenWithMenuElements )
+
+/** @brief Allow Lua to have access to EditParams. */
+class LunaEditParams: public Luna<EditParams>
+{
+public:
+
+	GET_SET_ENUM_METHOD(edit_type, EditType, m_EditType);
+	GET_SET_POINTER_MEMBER(song, Song, m_Song);
+	GET_SET_POINTER_MEMBER(steps, Steps, m_Steps);
+	GET_SET_ENUM_METHOD(difficulty, Difficulty, m_Difficulty);
+	GET_SET_ENUM_METHOD(steps_type, StepsType, m_StepsType);
+	GET_SET_POINTER_MEMBER(copy_from_steps, Steps, m_StepsCopyFrom);
+	GET_SET_MEMBER(edit_name, m_EditName, SArg);
+
+	LunaEditParams()
+	{
+		ADD_GET_SET_METHODS(edit_type);
+		ADD_GET_SET_METHODS(song);
+		ADD_GET_SET_METHODS(steps);
+		ADD_GET_SET_METHODS(difficulty);
+		ADD_GET_SET_METHODS(steps_type);
+		ADD_GET_SET_METHODS(copy_from_steps);
+		ADD_GET_SET_METHODS(edit_name);
+	}
+};
+
+LUA_REGISTER_CLASS(EditParams)
 
 /*
  * (c) 2001-2004 Chris Danford
