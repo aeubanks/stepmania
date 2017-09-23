@@ -332,11 +332,7 @@ local function generate_new_chart_slot_menu(info, slots)
 	return choices
 end
 
-<<<<<<< HEAD
 local function generate_new_chart_stype_menu(info)
-=======
-local function generate_new_chart_stype_menu(info, slots)
->>>>>>> autocreate
 	local choices= {
 		name= "new_chart_stype_menu",
 		up_text= "&leftarrow; " .. THEME:GetString("ScreenEditMenu", "new_chart_stype_back"),
