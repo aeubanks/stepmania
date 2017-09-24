@@ -284,12 +284,26 @@ inline float randomf( const float low=-1.0f, const float high=1.0f )
 /* return f rounded to the nearest multiple of fRoundInterval */
 inline float Quantize( const float f, const float fRoundInterval )
 {
-	return int( (f + fRoundInterval/2)/fRoundInterval ) * fRoundInterval;
+	if (f >= 0)
+	{
+		return int( (f + fRoundInterval/2)/fRoundInterval ) * fRoundInterval;
+	}
+	else
+	{
+		return int( (f - fRoundInterval/2)/fRoundInterval ) * fRoundInterval;
+	}
 }
 
 inline int Quantize( const int i, const int iRoundInterval )
 {
-	return int( (i + iRoundInterval/2)/iRoundInterval ) * iRoundInterval;
+	if (i >= 0)
+	{
+		return int( (i + iRoundInterval/2)/iRoundInterval ) * iRoundInterval;
+	}
+	else
+	{
+		return int( (i -  iRoundInterval/2)/iRoundInterval ) * iRoundInterval;
+	}
 }
 
 /* return f truncated to the nearest multiple of fTruncInterval */

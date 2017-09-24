@@ -90,6 +90,22 @@ public:
         rightRepeatCount = 0;
     }
 
+    PanelCoord getLeft() {
+        return left;
+    }
+
+    PanelCoord getRight() {
+        return right;
+    }
+
+    float getCurAngle() {
+        return curAngle;
+    }
+
+    float getOriginalAngle() {
+        return originalAngle;
+    }
+
     void toggleSide()
     {
         curLeft = !curLeft;
@@ -140,8 +156,8 @@ public:
     float testAngle(PanelCoord next) const
     {
         auto coords = testCoords(next);
-        float testAngle = angle(coords.first, coords.second);
-        testAngle += Quantize(testAngle - curAngle, M_PI * 2);
+        float testAngle = angle(coords.first, coords.second); // -135
+        testAngle -= Quantize(testAngle - curAngle, M_PI * 2); // Quantize(-135 - 180, 360)
         return testAngle;
     }
 
@@ -223,7 +239,8 @@ public:
         }
 
         float angle = testAngle(next);
-        return angle <= maxDeltaTurnAngle + 0.001f;
+        float delta = std::abs(angle - curAngle);
+        return delta <= maxDeltaTurnAngle + 0.001f;
     }
 
     float scaleAngle(PanelCoord next, float maxTurnAngle, float decay) const
@@ -253,6 +270,11 @@ std::vector<int> GetPossibleNextSteps(const std::vector<PanelCoord>& panelCoords
             float possibleAngle = creator.testAngle(curCoord);
             LOG->Trace("Auto creating considering track %d with angle %f", track, possibleAngle);
             possibleSteps.push_back(track);
+        }
+        else
+        {
+            float possibleAngle = creator.testAngle(curCoord);
+            LOG->Trace("Auto creating skipping track %d with angle %f (%d, %d, %d, %d)", track, possibleAngle, maxAngleTest, maxDeltaAngleTest, distTwoFeetTest, distSameFootTest);
         }
     }
     return possibleSteps;
@@ -325,12 +347,13 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
 
     int space = params.noteSpace;
 
-    LOG->Trace("Auto creating steps with space %d", space);
-
     AutoCreate creator(stepstype);
+
+        LOG->Trace("Auto creating steps with space %d, original angle %f", space, creator.getOriginalAngle());
 
     for (int row = iStartIndex; row < iEndIndex; row += space)
     {
+        LOG->Trace("cur state: l (%f, %f), r (%f, %f), angle %f", creator.getLeft().x, creator.getLeft().y, creator.getRight().x, creator.getRight().y, creator.getCurAngle());
         int nextStep = GetNextStep(panelCoords, creator, params);
         if (nextStep < 0)
         {
