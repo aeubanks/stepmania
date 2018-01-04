@@ -7,8 +7,6 @@
 namespace AutoCreateSteps {
 
 struct AutoCreateParameters {
-    int noteSpace;
-
     // can't block a step due to repetition because you can get into a corner with no way out.
     // should only decrease probability.
     int uncomfortableRepetitions;
@@ -31,7 +29,16 @@ struct AutoCreateParameters {
     float uncomfortableDistBetweenTwoFeetDecay;
 };
 
-void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex );
+enum AutoCreatePattern {
+    autocreate_pattern_1,
+    autocreate_pattern_11222,
+    autocreate_pattern_112,
+    autocreate_pattern_11114,
+    autocreate_pattern_111122,
+    autocreate_pattern_1111112,
+};
+
+void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex, int noteSpacing, AutoCreatePattern pattern );
 void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, const NoteData& copyRhythmFrom );
 
 }

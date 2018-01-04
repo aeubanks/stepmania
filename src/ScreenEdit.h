@@ -530,6 +530,7 @@ public:
 	enum AutoCreateMenuChoice
 	{
 		autocreate_space,
+		autocreate_pattern,
 		autocreate_max_turn,
 		autocreate_uncomfortable_turn,
 		autocreate_generate,

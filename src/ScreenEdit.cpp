@@ -1011,12 +1011,15 @@ static MenuDef g_AutoCreateMenu(
 	MenuRowDef(ScreenEdit::autocreate_space,
 		"Space",
 		true, EditMode_Practice, true, true, RCC_CHOICES),
+	MenuRowDef(ScreenEdit::autocreate_pattern,
+		"Pattern",
+		true, EditMode_Practice, true, true, 0, "1", "11222", "112", "11114", "111122", "1111112"),
 	MenuRowDef(ScreenEdit::autocreate_max_turn,
 		"Max Turn Degree",
-		true, EditMode_Practice, true, true, 0, "45", "90", "135", "180", "225", "270"),
+		true, EditMode_Practice, true, true, 1, "45", "90", "135", "180", "225", "270"),
 	MenuRowDef(ScreenEdit::autocreate_uncomfortable_turn,
 		"Uncomfortable Turn Degree",
-		true, EditMode_Practice, true, true, 0, "45", "90", "135", "180", "225", "270"),
+		true, EditMode_Practice, true, true, 1, "45", "90", "135", "180", "225", "270"),
 	MenuRowDef(ScreenEdit::autocreate_generate,
 		"Generate Steps",
 		true, EditMode_Practice, true, true, 0)
@@ -5447,8 +5450,6 @@ void ScreenEdit::HandleAlterMenuChoice(AlterMenuChoice c, const vector<int> &ans
 		}
 		case autocreate:
 		{
-			// g_AutoCreateMenu.rows[autocreate_space].iDefaultChoice;
-			// g_AutoCreateMenu.rows[autocreate_notes_per_row].iDefaultChoice = pSteps->GetDifficulty();
 			EditMiniMenu( &g_AutoCreateMenu, SM_BackFromAutoCreateMenu, SM_None );
 			break;
 		}
@@ -5729,7 +5730,8 @@ void ScreenEdit::HandleAutoCreateMenuChoice(AutoCreateMenuChoice c, const vector
 		case autocreate_generate:
 		{
 			AutoCreateSteps::AutoCreateParameters params;
-			params.noteSpace = GetRowsFromAnswers(autocreate_space, answers);
+			int noteSpace = GetRowsFromAnswers(autocreate_space, answers);
+			AutoCreateSteps::AutoCreatePattern pattern = static_cast<AutoCreateSteps::AutoCreatePattern>(answers[autocreate_pattern]);
 			params.maxTurnDegree = answers[autocreate_max_turn] * 45 + 45;
 			params.uncomfortableTurnDegree = answers[autocreate_uncomfortable_turn] * 45 + 45;
 			params.maxDeltaTurnDegree = 180;
@@ -5747,7 +5749,7 @@ void ScreenEdit::HandleAutoCreateMenuChoice(AutoCreateMenuChoice c, const vector
 			params.uncomfortableDistBetweenTwoFeetDecay = 0.5f;
 
 			StepsType curType = GAMESTATE->m_pCurSteps[PLAYER_1]->m_StepsType;
-			AutoCreateSteps::AutoCreateSteps( m_NoteDataEdit, curType, params, BeatToNoteRow(selection_start), BeatToNoteRow(selection_end) );
+			AutoCreateSteps::AutoCreateSteps( m_NoteDataEdit, curType, params, BeatToNoteRow(selection_start), BeatToNoteRow(selection_end), noteSpace, pattern );
 		}
 		default: break;
 	}

@@ -18,6 +18,25 @@ bool Contains(const T& t, const S& s)
     return std::find(t.begin(), t.end(), s) != t.end();
 }
 
+std::vector<int> GetPatternSpacing(AutoCreatePattern pattern) {
+    switch (pattern) {
+        case autocreate_pattern_1:
+            return {1};
+        case autocreate_pattern_11222:
+            return {1, 1, 2, 2, 2};
+        case autocreate_pattern_112:
+            return {1, 1, 2};
+        case autocreate_pattern_11114:
+            return {1, 1, 1, 1, 4};
+        case autocreate_pattern_111122:
+            return {1, 1, 1, 1, 2, 2};
+        case autocreate_pattern_1111112:
+            return {1, 1, 1, 1, 1, 1, 2};
+        default:
+            return {};
+    }
+}
+
 std::pair<PanelCoord, PanelCoord> startCoordsForStepsType(StepsType stepstype)
 {
     switch (stepstype)
@@ -339,19 +358,24 @@ int GetNextStep(const std::vector<PanelCoord>& panelCoords, const AutoCreate& cr
 
 }
 
-void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex )
+void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex, int noteSpacing, AutoCreatePattern pattern )
 {
     const std::vector<PanelCoord> panelCoords = panelCoordsForStepsType(stepstype);
+    const std::vector<int> patternSpacing = GetPatternSpacing(pattern);
+    int patternSpacingIdx = 0;
+
+    if (patternSpacing.empty()) {
+        LOG->Trace("Auto create invalid pattern");
+        return;
+    }
 
     inout.ClearRange(iStartIndex, iEndIndex);
 
-    int space = params.noteSpace;
-
     AutoCreate creator(stepstype);
 
-        LOG->Trace("Auto creating steps with space %d, original angle %f", space, creator.getOriginalAngle());
+    LOG->Trace("Auto creating steps with space %d, original angle %f", noteSpacing, creator.getOriginalAngle());
 
-    for (int row = iStartIndex; row < iEndIndex; row += space)
+    for (int row = iStartIndex; row < iEndIndex; row += noteSpacing * (patternSpacing[patternSpacingIdx++ % patternSpacing.size()]))
     {
         LOG->Trace("cur state: l (%f, %f), r (%f, %f), angle %f", creator.getLeft().x, creator.getLeft().y, creator.getRight().x, creator.getRight().y, creator.getCurAngle());
         int nextStep = GetNextStep(panelCoords, creator, params);
