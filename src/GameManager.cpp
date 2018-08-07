@@ -481,11 +481,11 @@ static const Style *g_apGame_Dance_Styles[] =
 	&g_Style_Dance_Single,
 	&g_Style_Dance_Versus,
 	&g_Style_Dance_Double,
-	&g_Style_Dance_Couple,
-	&g_Style_Dance_Solo,
-	&g_Style_Dance_Couple_Edit,
-	&g_Style_Dance_Routine,
-	&g_Style_Dance_ThreePanel,
+	// &g_Style_Dance_Couple,
+	// &g_Style_Dance_Solo,
+	// &g_Style_Dance_Couple_Edit,
+	// &g_Style_Dance_Routine,
+	// &g_Style_Dance_ThreePanel,
 	nullptr
 };
 
@@ -3602,7 +3602,7 @@ const StepsTypeInfo &GameManager::GetStepsTypeInfo( StepsType st )
 StepsType GameManager::StringToStepsType( std::string sStepsType )
 {
 	sStepsType = Rage::make_lower(sStepsType);
-	
+
 	for( int i=0; i<NUM_StepsType; i++ )
 	{
 		if( g_StepsTypeInfos[i].stepTypeName == sStepsType )

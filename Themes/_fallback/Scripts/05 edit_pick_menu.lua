@@ -95,15 +95,17 @@ do
 	end
 end
 
-local function handle_edit_setup(info)
-	GAMESTATE:JoinPlayer(PLAYER_1)
+local function handle_edit_setup(info, goto_edit)
 	local edit_steps= GAMESTATE:SetStepsForEditMode(info)
 	add_to_recently_edited(info:get_song(), edit_steps)
-	SCREENMAN:GetTopScreen():SetNextScreenName("ScreenEdit")
-		:StartTransitioningScreen("SM_GoToNextScreen")
+	if goto_edit then
+		GAMESTATE:JoinPlayer(PLAYER_1)
+		SCREENMAN:GetTopScreen():SetNextScreenName("ScreenEdit")
+			:StartTransitioningScreen("SM_GoToNextScreen")
+	end
 end
 
-local function handle_edit_description_prompt(info)
+local function handle_edit_description_prompt(info, goto_edit)
 	local text_settings= {
 		Question= THEME:GetString("ScreenEditMenu", "edit_description_prompt"),
 		InitialAnswer= "", MaxInputLength= 128,
@@ -113,7 +115,7 @@ local function handle_edit_description_prompt(info)
 					function()
 						info:set_difficulty("Difficulty_Edit")
 						info:set_edit_name(answer)
-						handle_edit_setup(info)
+						handle_edit_setup(info, goto_edit)
 					end, "create edit with description")
 			end
 		end,
@@ -137,7 +139,7 @@ local function generate_steps_action(info)
 			name= "edit_chart", translatable= true,
 			execute= function()
 				info:set_edit_type("EditType_Existing")
-				handle_edit_setup(info)
+				handle_edit_setup(info, true)
 			end,
 		},
 		{
@@ -195,7 +197,7 @@ local function generate_copy_dest_slot_menu(info, slots)
 						handle_edit_description_prompt(info)
 					else
 						info:set_difficulty(diff)
-						handle_edit_setup(info)
+						handle_edit_setup(info, true)
 					end
 				end,
 			}
@@ -256,10 +258,10 @@ local function generate_auto_create_slot_menu(info, slots)
 				name= name, translatable= false, execute= function()
 					info:set_edit_type("EditType_AutoCreate")
 					if diff == "Difficulty_Edit" then
-						handle_edit_description_prompt(info)
+						handle_edit_description_prompt(info, true)
 					else
 						info:set_difficulty(diff)
-						handle_edit_setup(info)
+						handle_edit_setup(info, false)
 					end
 				end,
 			}
@@ -323,7 +325,7 @@ local function generate_new_chart_slot_menu(info, slots)
 						handle_edit_description_prompt(info)
 					else
 						info:set_difficulty(diff)
-						handle_edit_setup(info)
+						handle_edit_setup(info, true)
 					end
 				end,
 			}
@@ -464,7 +466,7 @@ local function recently_edited_menu()
 						info = GAMESTATE:CreateEditParams()
 						info:set_song(song)
 						info:set_steps(steps)
-						handle_edit_setup(info)
+						handle_edit_setup(info, true)
 					end,
 					on_focus= function()
 						MESSAGEMAN:Broadcast("edit_menu_selection_changed", {song= song, steps= steps})

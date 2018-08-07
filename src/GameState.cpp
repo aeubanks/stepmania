@@ -3339,6 +3339,7 @@ public:
 				Difficulty diff = edit_params->m_Difficulty;
 				Steps* new_steps = song->CreateSteps();
 				std::string edit_name = edit_params->m_EditName;
+				bool go_to_edit = true;
 				switch (edit_params->m_EditType)
 				{
 					case EDIT_TYPE_BLANK:
@@ -3360,14 +3361,14 @@ public:
 					{
 						AutoCreateSteps::AutoCreateParameters params;
 						params.maxTurnDegree = 89;
-						params.uncomfortableTurnDegree = 89;
-						params.uncomfortableRepetitions = 2;
+						params.uncomfortableTurnDegree = 90;
+						params.uncomfortableRepetitions = 0;
 						params.maxDeltaTurnDegree = 180;
 						params.uncomfortableDeltaTurnDegree = 180;
 						params.maxDistBetweenTwoFeet = std::sqrt(8.0f);
-						params.uncomfortableDistBetweenTwoFeet = 2.0f;
+						params.uncomfortableDistBetweenTwoFeet = 2.01f;
 						params.maxDistBetweenSameFoot = std::sqrt(5.0f);
-						params.uncomfortableDistBetweenSameFoot = std::sqrt(5.0f);
+						params.uncomfortableDistBetweenSameFoot = 2;
 
 						params.uncomfortableRepetitionsDecay = 0.5f;
 						params.uncomfortableTurnDegreeDecay = 0.5f;
@@ -3375,6 +3376,7 @@ public:
 						params.uncomfortableDistBetweenSameFootDecay = 0.5f;
 						params.uncomfortableDistBetweenTwoFeetDecay = 0.5f;
 						new_steps->AutoCreate(edit_params->m_StepsCopyFrom, stype, params);
+						go_to_edit = false;
 						break;
 					}
 				}
@@ -3383,12 +3385,16 @@ public:
 				new_steps->SetDescription(edit_name);
 				new_steps->SetDifficulty(diff);
 				song->AddSteps(new_steps);
-				p->set_curr_song(song);
-				p->m_pCurSteps[PLAYER_1].Set(new_steps);
-				p->SetCurrentStyle(GAMEMAN->GetEditorStyleForStepsType(
-						new_steps->m_StepsType), PLAYER_INVALID);
-				p->m_pCurCourse.Set(nullptr);
 				new_steps->PushSelf(L);
+				if (go_to_edit) {
+					p->set_curr_song(song);
+					p->m_pCurSteps[PLAYER_1].Set(new_steps);
+					p->m_pCurCourse.Set(nullptr);
+					p->SetCurrentStyle(GAMEMAN->GetEditorStyleForStepsType(
+							new_steps->m_StepsType), PLAYER_INVALID);
+				} else {
+					song->Save();
+				}
 			}
 		}
 		return 1;

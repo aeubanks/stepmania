@@ -963,7 +963,7 @@ void Song::TidyUpData( bool from_cache, bool /* duringCache */ )
 				continue;	// skip
 
 				// Skip any image that we've already classified
-			
+
 				if(m_bHasBanner && lowerImage == m_sBannerFile)
 				continue;	// skip
 
@@ -1210,8 +1210,8 @@ void Song::Save(bool autosave)
 	TranslateTitles();
 
 	// Save the new files. These calls make backups on their own.
-	if( !SaveToSSCFile(GetSongFilePath(), false, autosave) )
-		return;
+	// if( !SaveToSSCFile(GetSongFilePath(), false, autosave) )
+		// return;
 	// Skip saving the cache, sm, and .old files if we are autosaving.  The
 	// cache file should not contain the autosave filename. -Kyz
 	if(autosave)
@@ -1229,24 +1229,24 @@ void Song::Save(bool autosave)
 
 	/* We've safely written our files and created backups. Rename non-SM and
 	 * non-DWI files to avoid confusion. */
-	vector<std::string> arrayOldFileNames;
-	GetDirListing( m_sSongDir + "*.bms", arrayOldFileNames );
-	GetDirListing( m_sSongDir + "*.pms", arrayOldFileNames );
-	GetDirListing( m_sSongDir + "*.ksf", arrayOldFileNames );
+	// vector<std::string> arrayOldFileNames;
+	// GetDirListing( m_sSongDir + "*.bms", arrayOldFileNames );
+	// GetDirListing( m_sSongDir + "*.pms", arrayOldFileNames );
+	// GetDirListing( m_sSongDir + "*.ksf", arrayOldFileNames );
 
-	for (auto &oldName: arrayOldFileNames)
-	{
-		const std::string sOldPath = m_sSongDir + oldName;
-		const std::string sNewPath = sOldPath + ".old";
+	// for (auto &oldName: arrayOldFileNames)
+	// {
+	// 	const std::string sOldPath = m_sSongDir + oldName;
+	// 	const std::string sNewPath = sOldPath + ".old";
 
-		if( !FileCopy( sOldPath, sNewPath ) )
-		{
-			LOG->UserLog( "Song file", sOldPath, "couldn't be backed up." );
-			// Don't remove.
-		}
-		else
-			FILEMAN->Remove( sOldPath );
-	}
+	// 	if( !FileCopy( sOldPath, sNewPath ) )
+	// 	{
+	// 		LOG->UserLog( "Song file", sOldPath, "couldn't be backed up." );
+	// 		// Don't remove.
+	// 	}
+	// 	else
+	// 		FILEMAN->Remove( sOldPath );
+	// }
 }
 
 bool Song::SaveToSMFile()
@@ -1269,13 +1269,15 @@ bool Song::SaveToSMFile()
 			continue;
 
 		vpStepsToSave.push_back( pSteps );
+		LOG->Trace("Saving difficulty %s", DifficultyToString(pSteps->GetDifficulty()));
 	}
 	for (auto *s: m_UnknownStyleSteps)
 	{
 		vpStepsToSave.push_back(s);
 	}
-
-	return NotesWriterSM::Write( sPath, *this, vpStepsToSave );
+	bool success = NotesWriterSM::Write( sPath, *this, vpStepsToSave );
+	LOG->Trace("Success: %d", success);
+	return success;
 
 }
 

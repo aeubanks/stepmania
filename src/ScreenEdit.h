@@ -489,6 +489,7 @@ public:
 		cut, /**< Cut the notes. */
 		copy, /**< Copy the notes. */
 		clear, /**< Erase the notes, without putting them in the clipboard. */
+		autocreate, /**< Auto create steps in area. */
 		quantize, /**< Sync the notes to an exact level. */
 		turn, /**< Rotate the notes. */
 		transform, /**< Activate a specific mod. */
@@ -505,7 +506,6 @@ public:
 		routine_invert_notes, /**< Switch which player hits the note. */
 		routine_mirror_1_to_2, /**< Mirror Player 1's notes for Player 2. */
 		routine_mirror_2_to_1, /**< Mirror Player 2's notes for Player 1. */
-		autocreate, /**< Auto create steps in area. */
 		NUM_ALTER_MENU_CHOICES
 	};
 

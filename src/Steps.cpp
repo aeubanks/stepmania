@@ -522,8 +522,7 @@ void Steps::CopyFrom( Steps* pSource, StepsType ntTo, float fMusicLengthSeconds 
 {
 	m_StepsType = ntTo;
 	m_StepsTypeStr= GAMEMAN->GetStepsTypeInfo(ntTo).stepTypeName;
-	NoteData noteData;
-	pSource->GetNoteData( noteData );
+	NoteData noteData = pSource->GetNoteData();
 	noteData.SetNumTracks( GAMEMAN->GetStepsTypeInfo(ntTo).iNumTracks );
 	parent = nullptr;
 	m_Timing = pSource->m_Timing;
@@ -540,11 +539,20 @@ void Steps::CopyFrom( Steps* pSource, StepsType ntTo, float fMusicLengthSeconds 
 void Steps::AutoCreate( Steps* pSource, StepsType ntTo, AutoCreateSteps::AutoCreateParameters params )
 {
 	m_StepsType = ntTo;
+	m_StepsTypeStr= GAMEMAN->GetStepsTypeInfo(ntTo).stepTypeName;
 	NoteData from = pSource->GetNoteData();
 	NoteData noteData;
 	noteData.SetNumTracks( GAMEMAN->GetStepsTypeInfo(ntTo).iNumTracks );
+	parent = nullptr;
+	m_Timing = pSource->m_Timing;
+	this->m_pSong = pSource->m_pSong;
+	this->m_Attacks = pSource->m_Attacks;
+	this->m_sAttackString = pSource->m_sAttackString;
 	AutoCreateSteps::AutoCreateSteps( noteData, ntTo, params, from );
 	this->SetNoteData( noteData );
+	this->SetDescription( pSource->GetDescription() );
+	this->SetDifficulty( pSource->GetDifficulty() );
+	this->SetMeter( pSource->GetMeter() );
 }
 
 void Steps::CreateBlank( StepsType ntTo )

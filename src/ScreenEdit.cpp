@@ -5501,7 +5501,7 @@ void ScreenEdit::HandleAlterMenuChoice(AlterMenuChoice c, const vector<int> &ans
 		case tempo:
 		{
 			// This affects all steps.
-			AlterType at = (AlterType)answers[c];
+			TempoType at = (TempoType)answers[c];
 			float fScale = -1;
 
 			switch( at )
@@ -5523,9 +5523,9 @@ void ScreenEdit::HandleAlterMenuChoice(AlterMenuChoice c, const vector<int> &ans
 			NoteDataUtil::ScaleRegion( m_NoteDataEdit, fScale, iStartIndex, iEndIndex );
 
 			// scale timing data
-			GetAppropriateTimingForUpdate().ScaleRegion(fScale,
-							   BeatToNoteRow(selection_start),
-							   BeatToNoteRow(selection_end), true );
+			// GetAppropriateTimingForUpdate().ScaleRegion(fScale,
+							//    BeatToNoteRow(selection_start),
+							//    BeatToNoteRow(selection_end), true );
 
 			m_NoteFieldEdit.set_selection_end(NoteRowToBeat(iNewEndIndex));
 			break;
@@ -5736,9 +5736,9 @@ void ScreenEdit::HandleAutoCreateMenuChoice(AutoCreateMenuChoice c, const vector
 			params.uncomfortableTurnDegree = answers[autocreate_uncomfortable_turn] * 45 + 45;
 			params.maxDeltaTurnDegree = 180;
 			params.uncomfortableDeltaTurnDegree = 180;
-			params.uncomfortableRepetitions = 2;
+			params.uncomfortableRepetitions = 0;
 			params.maxDistBetweenTwoFeet = std::sqrt(8.0f);
-			params.uncomfortableDistBetweenTwoFeet = 2.0f;
+			params.uncomfortableDistBetweenTwoFeet = 2.01f;
 			params.maxDistBetweenSameFoot = std::sqrt(5.0f);
 			params.uncomfortableDistBetweenSameFoot = std::sqrt(5.0f);
 

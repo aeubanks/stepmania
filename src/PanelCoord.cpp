@@ -41,6 +41,15 @@ std::vector<PanelCoord> panelCoordsForStepsType(StepsType stepstype)
                 {2.0f, 2.0f},
                 {2.0f, 0.0f},
             };
+        case StepsType_pump_halfdouble:
+            return {
+                {1.0f, 1.0f},
+                {2.0f, 2.0f},
+                {2.0f, 0.0f},
+                {3.0f, 0.0f},
+                {3.0f, 2.0f},
+                {4.0f, 1.0f},
+            };
         case StepsType_pump_double:
             return {
                 {0.0f, 0.0f},
@@ -87,6 +96,9 @@ std::vector<PanelCoord> panelCoordsForStepsType(StepsType stepstype)
                 {5.0f, 1.0f},
                 {5.0f, 0.0f},
             };
-        DEFAULT_FAIL(stepstype);
+        default:
+            return {
+                {0.0f, 0.0f},
+            };
     }
 }

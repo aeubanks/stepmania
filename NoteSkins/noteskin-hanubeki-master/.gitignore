@@ -1,0 +1,5 @@
+# PictBear (Japanese painting software) File Type
+*.pbx
+
+# Temporary files
+tmp/

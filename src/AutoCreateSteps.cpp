@@ -18,6 +18,17 @@ bool Contains(const T& t, const S& s)
     return std::find(t.begin(), t.end(), s) != t.end();
 }
 
+template<typename T, typename S>
+int IndexOf(const T& t, const S& s)
+{
+    for (int i = 0; i < t.size(); ++i) {
+        if (t[i] == s) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 std::vector<int> GetPatternSpacing(AutoCreatePattern pattern) {
     switch (pattern) {
         case autocreate_pattern_1:
@@ -52,6 +63,7 @@ std::pair<PanelCoord, PanelCoord> startCoordsForStepsType(StepsType stepstype)
         case StepsType_pump_single:
             return {{0.0f, 0.0f}, {2.0f, 0.0f}};
         case StepsType_pump_double:
+        case StepsType_pump_halfdouble:
             return {{2.0f, 0.0f}, {3.0f, 0.0f}};
         DEFAULT_FAIL(stepstype);
     }
@@ -65,6 +77,28 @@ private:
     float curAngle;
     float originalAngle;
     int leftRepeatCount, rightRepeatCount;
+
+public:
+
+    AutoCreate(StepsType stepstype)
+    {
+        auto start = startCoordsForStepsType(stepstype);
+        left = start.first;
+        right = start.second;
+        curLeft = RandomBool();
+        curAngle = angle(left, right);
+        originalAngle = curAngle;
+        leftRepeatCount = 0;
+        rightRepeatCount = 0;
+    }
+
+    PanelCoord getLeft() const {
+        return left;
+    }
+
+    PanelCoord getRight() const {
+        return right;
+    }
 
     PanelCoord& getCurPanel()
     {
@@ -96,32 +130,21 @@ private:
         return curLeft ? leftRepeatCount : rightRepeatCount;
     }
 
-public:
-    AutoCreate(StepsType stepstype)
+    int& getOtherRepeatCount()
     {
-        auto start = startCoordsForStepsType(stepstype);
-        left = start.first;
-        right = start.second;
-        curLeft = RandomBool();
-        curAngle = angle(left, right);
-        originalAngle = curAngle;
-        leftRepeatCount = 0;
-        rightRepeatCount = 0;
+        return curLeft ? rightRepeatCount : leftRepeatCount;
     }
 
-    PanelCoord getLeft() {
-        return left;
+    const int& getOtherRepeatCount() const
+    {
+        return curLeft ? rightRepeatCount : leftRepeatCount;
     }
 
-    PanelCoord getRight() {
-        return right;
-    }
-
-    float getCurAngle() {
+    float getCurAngle() const {
         return curAngle;
     }
 
-    float getOriginalAngle() {
+    float getOriginalAngle() const {
         return originalAngle;
     }
 
@@ -130,12 +153,12 @@ public:
         curLeft = !curLeft;
     }
 
-    int getSide()
+    int getSide() const
     {
         return curLeft ? 1 : 0;
     }
 
-    int getOtherSide()
+    int getOtherSide() const
     {
         return curLeft ? 0 : 1;
     }
@@ -202,6 +225,7 @@ public:
         {
             int i = getCurRepeatCount() - repetitiveMax;
             if (i > 0) {
+                LOG->Trace("scaleRepetitive: %f", std::pow(decay, i));
                 return std::pow(decay, i);
             }
         }
@@ -218,7 +242,7 @@ public:
         float dist = testDist(next);
         if (dist > maxDist)
         {
-            return std::pow(decay, dist - maxDist);
+            return std::pow(decay, dist - maxDist + 1);
         }
         return 1.0;
     }
@@ -233,7 +257,7 @@ public:
         float d = dist(next, getCurPanel());
         if (d > maxDist)
         {
-            return std::pow(decay, d - maxDist);
+            return std::pow(decay, d - maxDist + 1);
         }
         return 1.0;
     }
@@ -247,6 +271,7 @@ public:
 
         float angle = testAngle(next);
         float delta = std::abs(angle - originalAngle);
+        LOG->Trace("%f %f %f", angle, delta, maxTurnAngle);
         return delta <= maxTurnAngle + 0.001f;
     }
 
@@ -268,7 +293,7 @@ public:
         float delta = std::abs(angle - originalAngle);
         if (delta > maxTurnAngle)
         {
-            return std::pow(decay, delta - maxTurnAngle);
+            return std::pow(decay, delta - maxTurnAngle + 1);
         }
         return 1.0;
     }
@@ -287,13 +312,13 @@ std::vector<int> GetPossibleNextSteps(const std::vector<PanelCoord>& panelCoords
         if (maxAngleTest && maxDeltaAngleTest && distTwoFeetTest && distSameFootTest)
         {
             float possibleAngle = creator.testAngle(curCoord);
-            LOG->Trace("Auto creating considering track %d with angle %f", track, possibleAngle);
+
             possibleSteps.push_back(track);
         }
         else
         {
             float possibleAngle = creator.testAngle(curCoord);
-            LOG->Trace("Auto creating skipping track %d with angle %f (%d, %d, %d, %d)", track, possibleAngle, maxAngleTest, maxDeltaAngleTest, distTwoFeetTest, distSameFootTest);
+            LOG->Trace("Not considering track %d (%d %d %d %d) with angle %f", track, maxAngleTest, maxDeltaAngleTest, distTwoFeetTest, distSameFootTest, possibleAngle);
         }
     }
     return possibleSteps;
@@ -312,12 +337,13 @@ std::vector<std::pair<int, float>> GetNextStepsProbabilities( const std::vector<
         prob *= creator.scaleDistanceTwoFeet(panelCoords[possibleNextStep], params.uncomfortableDistBetweenTwoFeet, params.uncomfortableDistBetweenTwoFeetDecay);
         prob *= creator.scaleAngle(panelCoords[possibleNextStep], Rage::DegreesToRadians(params.uncomfortableTurnDegree), params.uncomfortableTurnDegreeDecay);
         ret.emplace_back(possibleNextStep, prob);
+        LOG->Trace("Auto creating considering track %d with prob %f", possibleNextStep, prob);
     }
 
     return ret;
 }
 
-int ChooseRandomNextStep(const std::vector<std::pair<int, float>>& possibleNextStepsAndProbs)
+int ChooseRandomNextStepFromProbs(const std::vector<std::pair<int, float>>& possibleNextStepsAndProbs)
 {
     int size = possibleNextStepsAndProbs.size();
     float sum = 0.0;
@@ -344,15 +370,16 @@ int ChooseRandomNextStep(const std::vector<std::pair<int, float>>& possibleNextS
 
 int GetNextStep(const std::vector<PanelCoord>& panelCoords, const AutoCreate& creator, const AutoCreateParameters& params )
 {
+    LOG->Trace("\nChoosing for side %d", creator.getSide());
     auto possibleSteps = GetPossibleNextSteps(panelCoords, creator, params);
     if (possibleSteps.empty())
     {
         LOG->Trace("Auto creating couldn't find suitable steps");
         return -1;
     }
-    LOG->Trace("Auto creating choosing from %d possible steps", possibleSteps.size());
     auto possibleStepsAndProbs = GetNextStepsProbabilities(panelCoords, creator, params, possibleSteps);
-    int ret = ChooseRandomNextStep(possibleStepsAndProbs);
+    int ret = ChooseRandomNextStepFromProbs(possibleStepsAndProbs);
+    LOG->Trace("Chose %d", ret);
     return ret;
 }
 
@@ -360,9 +387,12 @@ int GetNextStep(const std::vector<PanelCoord>& panelCoords, const AutoCreate& cr
 
 void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex, int noteSpacing, AutoCreatePattern pattern )
 {
+    LOG->Trace("Auto creating steps with space %d", noteSpacing);
+
     const std::vector<PanelCoord> panelCoords = panelCoordsForStepsType(stepstype);
     const std::vector<int> patternSpacing = GetPatternSpacing(pattern);
     int patternSpacingIdx = 0;
+    int numNotesGenerated = 0;
 
     if (patternSpacing.empty()) {
         LOG->Trace("Auto create invalid pattern");
@@ -373,32 +403,38 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
 
     AutoCreate creator(stepstype);
 
-    LOG->Trace("Auto creating steps with space %d, original angle %f", noteSpacing, creator.getOriginalAngle());
 
     for (int row = iStartIndex; row < iEndIndex; row += noteSpacing * (patternSpacing[patternSpacingIdx++ % patternSpacing.size()]))
     {
-        LOG->Trace("cur state: l (%f, %f), r (%f, %f), angle %f", creator.getLeft().x, creator.getLeft().y, creator.getRight().x, creator.getRight().y, creator.getCurAngle());
-        int nextStep = GetNextStep(panelCoords, creator, params);
-        if (nextStep < 0)
+        int nextStepIdx;
+
+        if (numNotesGenerated < 2) {
+            nextStepIdx = IndexOf(panelCoords, creator.getCurPanel());
+        } else {
+            nextStepIdx = GetNextStep(panelCoords, creator, params);
+        }
+
+        if (nextStepIdx < 0)
         {
             LOG->Trace("Auto creating couldn't create steps");
             // couldn't generate steps, break
             break;
         }
-        inout.SetTapNote(nextStep, row, TAP_ORIGINAL_TAP);
-        creator.step(panelCoords[nextStep]);
+        inout.SetTapNote(nextStepIdx, row, TAP_ORIGINAL_TAP);
+        creator.step(panelCoords[nextStepIdx]);
         creator.toggleSide();
-        LOG->Trace("Auto creating added step to track %d", nextStep);
+        ++numNotesGenerated;
     }
 }
 
 void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, const NoteData& copyRhythmFrom )
 {
-    const std::vector<PanelCoord> panelCoords = panelCoordsForStepsType(stepstype);
-
     LOG->Trace("Auto creating steps using existing rhythm");
 
+    const std::vector<PanelCoord> panelCoords = panelCoordsForStepsType(stepstype);
+
     bool done = false;
+    int numNotesGenerated = 0;
 
     AutoCreate creator(stepstype);
     FOREACH_NONEMPTY_ROW_ALL_TRACKS(copyRhythmFrom, row)
@@ -428,16 +464,22 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
         }
         for (int i = 0 ; i < numNotesToGenerate; ++i)
         {
-            int nextStep = GetNextStep(panelCoords, creator, params);
-            if (nextStep < 0)
-            {
-                LOG->Trace("Auto creating couldn't create steps");
-                done = true;
-                break;
+            int nextStepIdx;
+            if (numNotesGenerated < 2) {
+                nextStepIdx = IndexOf(panelCoords, creator.getCurPanel());
+            } else {
+                nextStepIdx = GetNextStep(panelCoords, creator, params);
+                if (nextStepIdx < 0)
+                {
+                    LOG->Trace("Auto creating couldn't create steps");
+                    done = true;
+                    break;
+                }
             }
-            inout.SetTapNote(nextStep, row, TAP_ORIGINAL_TAP);
-            creator.step(panelCoords[nextStep]);
+            inout.SetTapNote(nextStepIdx, row, TAP_ORIGINAL_TAP);
+            creator.step(panelCoords[nextStepIdx]);
             creator.toggleSide();
+            ++numNotesGenerated;
         }
 	}
 }

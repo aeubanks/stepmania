@@ -290,11 +290,13 @@ bool NotesWriterSM::Write( std::string sPath, Song &out, const vector<Steps*>& v
 	}
 
 	WriteGlobalTags( f, out );
+	LOG->Trace("%s", sPath);
 
 	for (auto const *pSteps: vpStepsToSave)
 	{
 		std::string sTag = GetSMNotesTag( out, *pSteps );
 		f.PutLine( sTag );
+		LOG->Trace("Wrote difficulty %s, len %d", DifficultyToString(pSteps->GetDifficulty()), sTag.length());
 	}
 	if( f.Flush() == -1 )
 		return false;
