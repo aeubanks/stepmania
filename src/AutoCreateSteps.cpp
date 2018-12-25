@@ -225,7 +225,6 @@ public:
         {
             int i = getCurRepeatCount() - repetitiveMax;
             if (i > 0) {
-                LOG->Trace("scaleRepetitive: %f", std::pow(decay, i));
                 return std::pow(decay, i);
             }
         }
@@ -271,7 +270,6 @@ public:
 
         float angle = testAngle(next);
         float delta = std::abs(angle - originalAngle);
-        LOG->Trace("%f %f %f", angle, delta, maxTurnAngle);
         return delta <= maxTurnAngle + 0.001f;
     }
 
@@ -368,8 +366,7 @@ int ChooseRandomNextStepFromProbs(const std::vector<std::pair<int, float>>& poss
     return possibleNextStepsAndProbs[idx].first;
 }
 
-int GetNextStep(const std::vector<PanelCoord>& panelCoords, const AutoCreate& creator, const AutoCreateParameters& params )
-{
+int GetNextStep(const std::vector<PanelCoord>& panelCoords, const AutoCreate& creator, const AutoCreateParameters& params) {
     LOG->Trace("\nChoosing for side %d", creator.getSide());
     auto possibleSteps = GetPossibleNextSteps(panelCoords, creator, params);
     if (possibleSteps.empty())
@@ -385,14 +382,13 @@ int GetNextStep(const std::vector<PanelCoord>& panelCoords, const AutoCreate& cr
 
 }
 
-void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex, int noteSpacing, AutoCreatePattern pattern )
-{
+void AutoCreateSteps(NoteData &inout, StepsType stepstype, const AutoCreateParameters& params, int iStartIndex, int iEndIndex, int noteSpacing, AutoCreatePattern pattern) {
     LOG->Trace("Auto creating steps with space %d", noteSpacing);
 
     const std::vector<PanelCoord> panelCoords = panelCoordsForStepsType(stepstype);
     const std::vector<int> patternSpacing = GetPatternSpacing(pattern);
     int patternSpacingIdx = 0;
-    int numNotesGenerated = 0;
+    int totalNumNotesGenerated = 0;
 
     if (patternSpacing.empty()) {
         LOG->Trace("Auto create invalid pattern");
@@ -404,18 +400,16 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
     AutoCreate creator(stepstype);
 
 
-    for (int row = iStartIndex; row < iEndIndex; row += noteSpacing * (patternSpacing[patternSpacingIdx++ % patternSpacing.size()]))
-    {
+    for (int row = iStartIndex; row < iEndIndex; row += noteSpacing * (patternSpacing[patternSpacingIdx++ % patternSpacing.size()])) {
         int nextStepIdx;
 
-        if (numNotesGenerated < 2) {
+        if (totalNumNotesGenerated < 2) {
             nextStepIdx = IndexOf(panelCoords, creator.getCurPanel());
         } else {
             nextStepIdx = GetNextStep(panelCoords, creator, params);
         }
 
-        if (nextStepIdx < 0)
-        {
+        if (nextStepIdx < 0) {
             LOG->Trace("Auto creating couldn't create steps");
             // couldn't generate steps, break
             break;
@@ -423,7 +417,7 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
         inout.SetTapNote(nextStepIdx, row, TAP_ORIGINAL_TAP);
         creator.step(panelCoords[nextStepIdx]);
         creator.toggleSide();
-        ++numNotesGenerated;
+        ++totalNumNotesGenerated;
     }
 }
 
@@ -433,27 +427,34 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
 
     const std::vector<PanelCoord> panelCoords = panelCoordsForStepsType(stepstype);
 
+    int prevCopyFromTrackCurFoot = -1, prevCopyFromTrackOtherFoot = -1;
+
     bool done = false;
-    int numNotesGenerated = 0;
+    int totalNumNotesGenerated = 0;
 
     AutoCreate creator(stepstype);
-    FOREACH_NONEMPTY_ROW_ALL_TRACKS(copyRhythmFrom, row)
-	{
-        if (done)
-        {
+    FOREACH_NONEMPTY_ROW_ALL_TRACKS(copyRhythmFrom, row) {
+        if (done) {
             break;
         }
+        bool copyFromPrevSameFoot = false;
+        bool copyFromPrevOtherFoot = false;
         int numNotesToGenerate = 0;
-        for (int track = 0; track < copyRhythmFrom.GetNumTracks(); ++track)
-        {
+        std::vector<int> newTracks;
+        for (int track = 0; track < copyRhythmFrom.GetNumTracks(); ++track) {
             const TapNote& note = copyRhythmFrom.GetTapNote(track, row);
-            switch (note.type)
-            {
+            switch (note.type) {
                 case TapNoteType_Tap:
                 case TapNoteType_Lift:
-                case TapNoteType_HoldHead:
-                {
+                case TapNoteType_HoldHead: {
                     ++numNotesToGenerate;
+                    if (track == prevCopyFromTrackCurFoot) {
+                        copyFromPrevSameFoot = true;
+                    } else if (track == prevCopyFromTrackOtherFoot) {
+                        copyFromPrevOtherFoot = true;
+                    } else {
+                        newTracks.push_back(track);
+                    }
                 }
             }
         }
@@ -462,15 +463,30 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
                 creator.toggleSide();
             }
         }
-        for (int i = 0 ; i < numNotesToGenerate; ++i)
-        {
+        for (int i = 0; i < numNotesToGenerate; ++i) {
             int nextStepIdx;
-            if (numNotesGenerated < 2) {
+            bool swapPrev = true;
+            if (totalNumNotesGenerated < 2) {
+                nextStepIdx = IndexOf(panelCoords, creator.getCurPanel());
+            } else if (copyFromPrevOtherFoot) {
+                copyFromPrevOtherFoot = false;
+                nextStepIdx = IndexOf(panelCoords, creator.getOtherPanel());
+                swapPrev = false;
+                creator.toggleSide();
+            } else if (copyFromPrevSameFoot) {
+                copyFromPrevSameFoot = false;
                 nextStepIdx = IndexOf(panelCoords, creator.getCurPanel());
             } else {
+                if (newTracks.empty()) {
+                    LOG->Trace("Expected newTracks to not be empty, but it is!?");
+                } else {
+                    int rand = RandomInt(newTracks.size());
+                    int removedTrack = newTracks[rand];
+                    newTracks.erase(newTracks.begin() + rand);
+                    prevCopyFromTrackCurFoot = removedTrack;
+                }
                 nextStepIdx = GetNextStep(panelCoords, creator, params);
-                if (nextStepIdx < 0)
-                {
+                if (nextStepIdx < 0) {
                     LOG->Trace("Auto creating couldn't create steps");
                     done = true;
                     break;
@@ -478,10 +494,18 @@ void AutoCreateSteps( NoteData &inout, StepsType stepstype, const AutoCreatePara
             }
             inout.SetTapNote(nextStepIdx, row, TAP_ORIGINAL_TAP);
             creator.step(panelCoords[nextStepIdx]);
+            if (swapPrev) {
+                std::swap(prevCopyFromTrackCurFoot, prevCopyFromTrackOtherFoot);
+            }
             creator.toggleSide();
-            ++numNotesGenerated;
+            ++totalNumNotesGenerated;
         }
-	}
+        if (numNotesToGenerate > 1) {
+            if (RandomBool()) {
+                creator.toggleSide();
+            }
+        }
+    }
 }
 
 }
