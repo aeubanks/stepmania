@@ -298,8 +298,8 @@ elseif(MACOSX)
   set(WITH_CRASH_HANDLER TRUE)
   # Apple Archs needs to be 32-bit for now.
   # When SDL2 is introduced, this may change.
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.7")
-  set(CMAKE_OSX_DEPLOYMENT_TARGET_FULL "10.7.0")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET_FULL "10.9.0")
 
   find_library(MAC_FRAME_ACCELERATE Accelerate ${CMAKE_SYSTEM_FRAMEWORK_PATH})
   find_library(MAC_FRAME_APPKIT AppKit ${CMAKE_SYSTEM_FRAMEWORK_PATH})
