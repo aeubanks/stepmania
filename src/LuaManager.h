@@ -1,6 +1,8 @@
 #ifndef LUA_MANAGER_H
 #define LUA_MANAGER_H
 
+#include "format.h"
+
 struct lua_State;
 typedef lua_State Lua;
 typedef void (*RegisterWithLuaFn)(lua_State*);

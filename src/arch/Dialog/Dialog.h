@@ -1,5 +1,6 @@
 #ifndef DIALOG_BOX_H
 #define DIALOG_BOX_H
+#include <string>
 
 namespace Dialog
 {
